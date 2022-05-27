@@ -31,7 +31,7 @@
         const video = document.getElementsByTagName("video")[0]
         // 静音、倍速
         video.muted = true
-        // 设置倍速播放 支持以下速率: [2, 1.5, 1.2, 0.5] ；默认开启 如有问题请手动注释下面这行代码；或者邮箱反馈我
+        // 设置倍速播放 支持以下速率: [2, 1.5, 1.2, 0.5] 
         video.playbackRate = 2
         video.play()
 
