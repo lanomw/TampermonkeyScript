@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         青书学堂视频挂机
 // @namespace    https://github.com/lanomw
-// @version      0.1
+// @version      0.2
 // @description  青书学堂视频自动静音播放，解放双手。目前仅支持视频自动播放
 // @author       lanomw
 // @match        *://*.qingshuxuetang.com/*
@@ -12,40 +12,59 @@
 (function () {
     'use strict';
 
+    setTimeout(function () {
+        autoPlayVideo()
+        showAnswer()
+    }, 3000)
+
+})();
+
+// 自动播放视频
+function autoPlayVideo() {
     // 非播放页面阻断执行
     if (location.href.indexOf('cw_nodeId') === -1) {
         return
     }
 
-    setTimeout(function () {
-        const urlSearch = UrlSearch()
+    const urlSearch = UrlSearch()
 
-        // 当前id
-        const cw_nodeId = `courseware-${urlSearch.cw_nodeId}`
-        // 课程列表
-        const lessonList = document.getElementById('lessonList').children
-        // 下一个课程
-        const next_cw_nodeId = getNextLession(lessonList, cw_nodeId)
+    // 当前id
+    const cw_nodeId = `courseware-${urlSearch.cw_nodeId}`
+    // 课程列表
+    const lessonList = document.getElementById('lessonList').children
+    // 下一个课程
+    const next_cw_nodeId = getNextLession(lessonList, cw_nodeId)
 
 
-        const video = document.getElementsByTagName("video")[0]
-        // 静音、倍速
-        video.muted = true
-        // 设置倍速播放 支持以下速率: [2, 1.5, 1.2, 0.5] 
-        video.playbackRate = 2
-        video.play()
+    const video = document.getElementsByTagName("video")[0]
+    // 静音、倍速
+    video.muted = true
+    // 设置倍速播放 支持以下速率: [2, 1.5, 1.2, 0.5]
+    video.playbackRate = 2
+    video.play()
 
-        // 视频播放结束则跳转
-        console.log(cw_nodeId, '---> to -->', next_cw_nodeId)
-        video.addEventListener("ended", function () {
-            if (next_cw_nodeId) {
-                const lession = document.getElementById(next_cw_nodeId)
-                lession && lession.click()
-            }
-        })
-    }, 3000)
+    // 视频播放结束则跳转
+    console.log(cw_nodeId, '---> to -->', next_cw_nodeId)
+    video.addEventListener("ended", function () {
+        if (next_cw_nodeId) {
+            const lession = document.getElementById(next_cw_nodeId)
+            lession && lession.click()
+        }
+    })
+}
 
-})();
+// 作业答案
+function showAnswer() {
+    // 非作业答题页面阻断执行
+    if (location.href.indexOf('ExercisePaper') === -1) {
+        return
+    }
+
+    const url = location.href.replace('ExercisePaper', 'ViewExerciseAnswer')
+
+    // 窗口可能会被浏览器拦截。需要允许
+    window.open(url, '_blank')
+}
 
 // url参数转换为对象
 function UrlSearch() {
