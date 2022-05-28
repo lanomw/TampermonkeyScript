@@ -7,6 +7,7 @@
 // @match        *://*.qingshuxuetang.com/*
 // @icon         https://degree.qingshuxuetang.com/resources/default/images/favicon.ico
 // @grant        none
+// @license      MIT
 // ==/UserScript==
 
 (function () {
