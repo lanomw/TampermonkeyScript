@@ -61,7 +61,7 @@ function showAnswer() {
         return
     }
 
-    const url = location.href.replace('ExercisePaper', 'ViewExerciseAnswer')
+    const url = location.href.replace('ExercisePaper', 'ViewQuiz')
 
     // 窗口可能会被浏览器拦截。需要允许
     window.open(url, '_blank')
