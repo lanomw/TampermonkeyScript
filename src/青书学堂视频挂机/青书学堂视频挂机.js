@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         青书学堂视频挂机
 // @namespace    https://github.com/lanomw
-// @version      0.2
+// @version      0.3
 // @description  青书学堂视频自动静音播放，解放双手。支持自动播放视频、作业答案查看
 // @author       lanomw
 // @match        *://*.qingshuxuetang.com/*
