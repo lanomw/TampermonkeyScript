@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         青书学堂视频挂机
 // @namespace    https://github.com/lanomw
-// @version      1.0
+// @version      1.1
 // @description  青书学堂视频自动静音播放，解放双手。支持自动播放视频、作业答案自动填入
 // @author       lanomw
 // @match        *://*.qingshuxuetang.com/*
@@ -14,18 +14,25 @@
 (function () {
     'use strict'
 
-    setTimeout(function () {
-        // 看网课
-        if (location.href.indexOf('cw_nodeId') !== -1) {
-            autoPlayVideo()
+    // 做作业
+    if (location.href.indexOf('ExercisePaper') !== -1) {
+        autoFillAnswer()
+        return
+    }
+
+    // 看网课
+    if (location.href.indexOf('CourseShow') !== -1) {
+        function setup() {
+            // 检测核心脚本是否加载完成
+            if (typeof CoursewareNodesManager !== 'undefined' && CoursewareNodesManager !== null) {
+                autoPlayVideo()
+            } else {
+                requestAnimationFrame(setup)
+            }
         }
 
-        // 做作业
-        if (location.href.indexOf('ExercisePaper') !== -1) {
-            autoFillAnswer()
-        }
-    }, 3000)
-
+        requestAnimationFrame(setup)
+    }
 })();
 
 // url参数转换为对象
@@ -41,80 +48,77 @@ function UrlSearch() {
     return params
 }
 
-// 自动播放视频
-function autoPlayVideo() {
-    const urlSearch = UrlSearch()
-
-    // 当前id
-    const cw_nodeId = `
-courseware -${urlSearch.cw_nodeId}`
-    // 课程列表
-    const lessonList = document.getElementById('lessonList').children
-    // 下一个课程
-    const next_cw_nodeId = getNextLession(lessonList, cw_nodeId)
-
-    const video = document.getElementsByTagName("video")[0]
-    // 静音、倍速
-    video.muted = true
-    // 设置倍速播放 支持以下速率: [2, 1.5, 1.2, 0.5]
-    video.playbackRate = 2
-    video.play()
-
-    // 视频播放结束则跳转
-    video.addEventListener("ended", function () {
-        if (next_cw_nodeId) {
-            const lession = document.getElementById(next_cw_nodeId)
-            lession && lession.click()
-        }
-    })
+window.Manager = {
+    search: UrlSearch(), // url参数
+    menus: [], // 菜单渲染节点
 }
 
-// 根据当前课程id递归获取下一个课程
-function getNextLession(list, cw_nodeId) {
-    let nodeId = ''
-    let isMatch = false
+// tree 菜单抹平为一级菜单。用于执行课程切换的数据在叶子节点，其余为无用的导航菜单
+function buildMenus(nodes) {
+    const menus = [];
 
-    function findLession(list) {
-        for (let i = 0; i < list.length; i++) {
-            const children = list[i].children
-            const childElementCount = list[i].childElementCount
-            if (childElementCount === 1) {
-                // 下一个课程
-                if (isMatch) {
-                    nodeId = children[0].id
-                    break
-                }
-
-                // 已匹配到当前课程。获取下一个课程
-                if (children[0].id === cw_nodeId) {
-                    isMatch = true
-                    continue
-                }
+    function recursiveNodes(nodes) {
+        nodes.forEach(function (node) {
+            if (node.nodes) {
+                recursiveNodes(node.nodes)
             } else {
-                // 递归
-                findLession(children[1].children)
-                if (nodeId && isMatch) {
-                    break
-                }
+                menus.push(node)
             }
-        }
-
-        return {nodeId, isMatch}
+        })
     }
 
-    findLession(list)
+    recursiveNodes(nodes)
 
-    return nodeId
+    return menus
+}
+
+// 自动播放视频
+function autoPlayVideo() {
+    const _renderMenu = CoursewareNodesManager.renderMenu
+
+    // 菜单渲染劫持、自动播放视频、自动跳转下一课程
+    CoursewareNodesManager.renderMenu = function (rootNode, nodes, clickNode) {
+        _renderMenu(rootNode, nodes, clickNode)
+
+        Manager.menus = buildMenus(nodes)
+
+        setTimeout(function () {
+            const nextNodeId = getNextLesson()
+            const video = document.getElementsByTagName("video")[0]
+
+            // 视频播放结束则跳转
+            if (nextNodeId) {
+                video.addEventListener("ended", function () {
+                    clickNode(nextNodeId)
+                })
+            }
+
+            // 静音、倍速
+            video.muted = true
+            // 设置倍速播放 支持以下速率: [2, 1.5, 1.2, 0.5]
+            video.playbackRate = 2
+            video.play()
+        }, 500)
+    }
+}
+
+// 解析 url nodeId，从菜单获取下一课程的 nodeId
+function getNextLesson() {
+    const menus = Manager.menus
+
+    for (let i = 0; i < menus.length; i++) {
+        if (menus[i].id === Manager.search.nodeId) {
+            return (menus[i + 1] || {}).id
+        }
+    }
 }
 
 // 答案自动填入
 function autoFillAnswer() {
     var urlSearch = UrlSearch()
 
-    fetch(`
-https://degree.qingshuxuetang.com/xnsy/Student/DetailData?_t=${new Date().getMilliseconds()}&quizId=${urlSearch.quizId}`, {
-        method: 'GET',
-        headers: {
+    fetch(`https://degree.qingshuxuetang.com/xnsy/Student/DetailData?_t=${new Date().getMilliseconds()}&quizId=${urlSearch.quizId}`, {
+        method: 'GET', headers: {
             Host: 'degree.qingshuxuetang.com',
             Cookie: Object.entries(Cookies.get()).map(([key, value]) => `${key}=${value}`).join('; '),
             Referer: `https://degree.qingshuxuetang.com/xnsy/Student/ExercisePaper?courseId=${urlSearch.courseId}&quizId=${urlSearch.quizId}&teachPlanId=${urlSearch.teachPlanId}&periodId=${urlSearch.periodId}`,
@@ -138,13 +142,11 @@ https://degree.qingshuxuetang.com/xnsy/Student/DetailData?_t=${new Date().getMil
         })
 
         pxmu.success({
-            msg: '答案已自动填入',
-            bg: '#4CC443',
+            msg: '答案已自动填入', bg: '#4CC443',
         })
     }).catch(err => {
         pxmu.fail({
-            msg: '答案已填入失败。请手动填入答案',
-            bg: 'red',
+            msg: '答案已填入失败。请手动填入答案', bg: 'red',
         })
 
         setTimeout(() => {
