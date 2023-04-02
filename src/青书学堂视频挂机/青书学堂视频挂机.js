@@ -98,7 +98,7 @@ function autoPlayVideo() {
             // 设置倍速播放 支持以下速率: [2, 1.5, 1.2, 0.5]
             video.playbackRate = 2
             video.play()
-        }, 500)
+        }, 3000)
     }
 }
 
