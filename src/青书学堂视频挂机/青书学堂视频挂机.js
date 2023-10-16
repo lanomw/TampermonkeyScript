@@ -1,12 +1,14 @@
 // ==UserScript==
 // @name         青书学堂视频挂机
 // @namespace    https://github.com/lanomw
-// @version      1.1
+// @version      1.2
 // @description  青书学堂视频自动静音播放，解放双手。支持自动播放视频、作业答案自动填入
 // @author       lanomw
 // @match        *://*.qingshuxuetang.com/*
 // @icon         https://degree.qingshuxuetang.com/resources/default/images/favicon.ico
 // @require      https://unpkg.com/pxmu@1.1.0/dist/web/pxmu.min.js
+// @require      https://lib.baomitu.com/lodash.js/latest/lodash.min.js
+// @run-at       document-body
 // @grant        none
 // @license      MIT
 // ==/UserScript==
@@ -22,16 +24,10 @@
 
     // 看网课
     if (location.href.indexOf('CourseShow') !== -1) {
-        function setup() {
-            // 检测核心脚本是否加载完成
-            if (typeof CoursewareNodesManager !== 'undefined' && CoursewareNodesManager !== null) {
-                autoPlayVideo()
-            } else {
-                requestAnimationFrame(setup)
-            }
-        }
-
-        requestAnimationFrame(setup)
+        listenSource([
+            {attrPath: 'CoursewarePlayer.videoPlayer.player', callback: autoPlayVideo},
+            {attrPath: 'CoursewareNodesManager', callback: proxyRenderMenu}
+        ]);
     }
 })();
 
@@ -46,6 +42,29 @@ function UrlSearch() {
     })
 
     return params
+}
+
+// 监听资源是否执行完成
+function listenSource(listen = []) {
+
+    function setup() {
+        listen.forEach((item, index) => {
+            const {attrPath, callback} = item;
+
+            if (_.has(window, attrPath)) {
+                callback();
+                listen.splice(index, 1);
+            }
+        })
+
+        if (listen.length) {
+            requestAnimationFrame(setup);
+        }
+    }
+
+    if (listen.length) {
+        requestAnimationFrame(setup);
+    }
 }
 
 window.Manager = {
@@ -74,31 +93,43 @@ function buildMenus(nodes) {
 
 // 自动播放视频
 function autoPlayVideo() {
+    // 静音、倍速
+    CoursewarePlayer.videoPlayer.player.muted(true)
+    CoursewarePlayer.videoPlayer.player.playbackRate(16)
+
+    // 自动播放视频、播放结束跳转下一课程
+    CoursewarePlayer.addListener('ended', function () {
+        const nextNodeId = getNextLesson()
+
+        if (nextNodeId) {
+            CoursewareNodesManager.onMenuClick(nextNodeId)
+        } else {
+            pxmu.diaglog({
+                congif: {
+                    btncount: true,
+                },
+                content: {
+                    text: '本课程已播放完成，请手动检查成绩',
+                }
+            }).then(function(res) {
+                pxmu.closediaglog();
+            });
+        }
+    })
+
+    // 播放视频
+    CoursewarePlayer.play()
+}
+
+// 菜单渲染拦截
+function proxyRenderMenu() {
     const _renderMenu = CoursewareNodesManager.renderMenu
 
-    // 菜单渲染劫持、自动播放视频、自动跳转下一课程
-    CoursewareNodesManager.renderMenu = function (rootNode, nodes, clickNode) {
-        _renderMenu(rootNode, nodes, clickNode)
+    CoursewareNodesManager.renderMenu = function (menuContainerId, coursewareNodes, onMenuClick) {
+        _renderMenu(menuContainerId, coursewareNodes, onMenuClick)
 
-        Manager.menus = buildMenus(nodes)
+        Manager.menus = buildMenus(coursewareNodes)
 
-        setTimeout(function () {
-            const nextNodeId = getNextLesson()
-            const video = document.getElementsByTagName("video")[0]
-
-            // 视频播放结束则跳转
-            if (nextNodeId) {
-                video.addEventListener("ended", function () {
-                    clickNode(nextNodeId)
-                })
-            }
-
-            // 静音、倍速
-            video.muted = true
-            // 设置倍速播放 支持以下速率: [2, 1.5, 1.2, 0.5]
-            video.playbackRate = 2
-            video.play()
-        }, 3000)
     }
 }
 
