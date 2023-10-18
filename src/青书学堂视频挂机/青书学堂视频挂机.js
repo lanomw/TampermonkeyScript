@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         青书学堂视频挂机
 // @namespace    https://github.com/lanomw
-// @version      1.2
+// @version      1.2.1
 // @description  青书学堂视频自动静音播放，解放双手。支持自动播放视频、作业答案自动填入
 // @author       lanomw
 // @match        *://*.qingshuxuetang.com/*
@@ -95,7 +95,7 @@ function buildMenus(nodes) {
 function autoPlayVideo() {
     // 静音、倍速
     CoursewarePlayer.videoPlayer.player.muted(true)
-    CoursewarePlayer.videoPlayer.player.playbackRate(16)
+    CoursewarePlayer.videoPlayer.player.playbackRate(2)
 
     // 自动播放视频、播放结束跳转下一课程
     CoursewarePlayer.addListener('ended', function () {
