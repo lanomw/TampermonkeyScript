@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         青书学堂视频挂机
 // @namespace    https://github.com/lanomw
-// @version      1.2.1
+// @version      1.2.2
 // @description  青书学堂视频自动静音播放，解放双手。支持自动播放视频、作业答案自动填入
 // @author       lanomw
 // @match        *://*.qingshuxuetang.com/*
@@ -18,15 +18,26 @@
 
     // 做作业
     if (location.href.indexOf('ExercisePaper') !== -1) {
-        autoFillAnswer()
+        listenSource([
+            {
+                fn: () => $('.question-detail-options .question-detail-option').length,
+                callback: autoFillAnswer
+            },
+        ]);
         return
     }
 
     // 看网课
     if (location.href.indexOf('CourseShow') !== -1) {
         listenSource([
-            {attrPath: 'CoursewarePlayer.videoPlayer.player', callback: autoPlayVideo},
-            {attrPath: 'CoursewareNodesManager', callback: proxyRenderMenu}
+            {
+                fn: () => _.has(window, 'CoursewarePlayer.videoPlayer.player'),
+                callback: autoPlayVideo
+            },
+            {
+                fn: () => _.has(window, 'CoursewareNodesManager'),
+                callback: proxyRenderMenu
+            }
         ]);
     }
 })();
@@ -44,14 +55,21 @@ function UrlSearch() {
     return params
 }
 
-// 监听资源是否执行完成
+/**
+ * 监听资源是否执行完成
+ * @param listen - 资源监听
+ * [{
+ *     fn: 返回值为真时，执行callback并移除任务
+ *     callback: 回调
+ * }]
+ */
 function listenSource(listen = []) {
 
     function setup() {
         listen.forEach((item, index) => {
-            const {attrPath, callback} = item;
+            const {fn, callback} = item;
 
-            if (_.has(window, attrPath)) {
+            if (fn()) {
                 callback();
                 listen.splice(index, 1);
             }
@@ -96,6 +114,7 @@ function autoPlayVideo() {
     // 静音、倍速
     CoursewarePlayer.videoPlayer.player.muted(true)
     CoursewarePlayer.videoPlayer.player.playbackRate(2)
+    CoursewarePlayer.videoPlayer.player.currentTime(0)
 
     // 自动播放视频、播放结束跳转下一课程
     CoursewarePlayer.addListener('ended', function () {
@@ -111,7 +130,7 @@ function autoPlayVideo() {
                 content: {
                     text: '本课程已播放完成，请手动检查成绩',
                 }
-            }).then(function(res) {
+            }).then(function (res) {
                 pxmu.closediaglog();
             });
         }
