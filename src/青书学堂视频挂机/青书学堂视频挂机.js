@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         青书学堂视频挂机
 // @namespace    https://github.com/lanomw
-// @version      1.2.2
+// @version      1.2.3
 // @description  青书学堂视频自动静音播放，解放双手。支持自动播放视频、作业答案自动填入
 // @author       lanomw
 // @match        *://*.qingshuxuetang.com/*
@@ -15,6 +15,12 @@
 
 (function () {
     'use strict'
+
+    // 考试页面解除复制
+    if (location.href.indexOf('ExamPaper') !== -1) {
+        $('*').unbind('copy')
+        return
+    }
 
     // 做作业
     if (location.href.indexOf('ExercisePaper') !== -1) {
